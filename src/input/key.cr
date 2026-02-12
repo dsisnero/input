@@ -3,44 +3,44 @@ require "ansi"
 module Input
   # KeyExtended is a special key code used to signify that a key event
   # contains multiple runes.
-  KeyExtended = Char::MAX_CODEPOINT + 1
+  KeyExtended = (Char::MAX_CODEPOINT + 1_u32).to_u32
 
   # Special key symbols.
 
   # Special keys.
-  KeyUp     = KeyExtended + 1
-  KeyDown   = KeyExtended + 2
-  KeyRight  = KeyExtended + 3
-  KeyLeft   = KeyExtended + 4
-  KeyBegin  = KeyExtended + 5
-  KeyFind   = KeyExtended + 6
-  KeyInsert = KeyExtended + 7
-  KeyDelete = KeyExtended + 8
-  KeySelect = KeyExtended + 9
-  KeyPgUp   = KeyExtended + 10
-  KeyPgDown = KeyExtended + 11
-  KeyHome   = KeyExtended + 12
-  KeyEnd    = KeyExtended + 13
+  KeyUp     = KeyExtended + 1_u32
+  KeyDown   = KeyExtended + 2_u32
+  KeyRight  = KeyExtended + 3_u32
+  KeyLeft   = KeyExtended + 4_u32
+  KeyBegin  = KeyExtended + 5_u32
+  KeyFind   = KeyExtended + 6_u32
+  KeyInsert = KeyExtended + 7_u32
+  KeyDelete = KeyExtended + 8_u32
+  KeySelect = KeyExtended + 9_u32
+  KeyPgUp   = KeyExtended + 10_u32
+  KeyPgDown = KeyExtended + 11_u32
+  KeyHome   = KeyExtended + 12_u32
+  KeyEnd    = KeyExtended + 13_u32
 
   # Keypad keys.
-  KeyKpEnter    = KeyExtended + 14
-  KeyKpEqual    = KeyExtended + 15
-  KeyKpMultiply = KeyExtended + 16
-  KeyKpPlus     = KeyExtended + 17
-  KeyKpComma    = KeyExtended + 18
-  KeyKpMinus    = KeyExtended + 19
-  KeyKpDecimal  = KeyExtended + 20
-  KeyKpDivide   = KeyExtended + 21
-  KeyKp0        = KeyExtended + 22
-  KeyKp1        = KeyExtended + 23
-  KeyKp2        = KeyExtended + 24
-  KeyKp3        = KeyExtended + 25
-  KeyKp4        = KeyExtended + 26
-  KeyKp5        = KeyExtended + 27
-  KeyKp6        = KeyExtended + 28
-  KeyKp7        = KeyExtended + 29
-  KeyKp8        = KeyExtended + 30
-  KeyKp9        = KeyExtended + 31
+  KeyKpEnter    = KeyExtended + 14_u32
+  KeyKpEqual    = KeyExtended + 15_u32
+  KeyKpMultiply = KeyExtended + 16_u32
+  KeyKpPlus     = KeyExtended + 17_u32
+  KeyKpComma    = KeyExtended + 18_u32
+  KeyKpMinus    = KeyExtended + 19_u32
+  KeyKpDecimal  = KeyExtended + 20_u32
+  KeyKpDivide   = KeyExtended + 21_u32
+  KeyKp0        = KeyExtended + 22_u32
+  KeyKp1        = KeyExtended + 23_u32
+  KeyKp2        = KeyExtended + 24_u32
+  KeyKp3        = KeyExtended + 25_u32
+  KeyKp4        = KeyExtended + 26_u32
+  KeyKp5        = KeyExtended + 27_u32
+  KeyKp6        = KeyExtended + 28_u32
+  KeyKp7        = KeyExtended + 29_u32
+  KeyKp8        = KeyExtended + 30_u32
+  KeyKp9        = KeyExtended + 31_u32
 
   # The following are keys defined in the Kitty keyboard protocol.
   # TODO: Investigate the names of these keys.

@@ -1,6 +1,7 @@
 require "../spec_helper"
 
 module Input
+  record SeqTest, seq : Bytes, events : Array(Event)
   describe Parser do
     it "parses alt+shift+tab and printable letters" do
       input = Bytes[
@@ -64,6 +65,174 @@ module Input
         got.should eq want[i]
         slice = slice + n
         i += 1
+      end
+    end
+
+    pending "parses all sequences" do
+      # Port of Go's TestParseSequence
+      # f3_cur_pos_regexp = /\e\[1;(\d+)R/
+      # sequences = Input.build_keys_table(FlagTerminfo, "dumb")
+
+      td = [] of SeqTest
+      # sequences.each do |seq, key|
+      #   k = KeyPressEvent.new(key)
+      #   st = SeqTest.new(seq.to_slice, [k] of Event)
+      #   if f3_cur_pos_regexp.match(seq)
+      #     st = SeqTest.new(seq.to_slice, [k, CursorPositionEvent.new(x: key.mod.value.to_i, y: 0)] of Event)
+      #   end
+      #   td << st
+      # end
+
+      # Additional special cases.
+      # td << SeqTest.new(Bytes[0x1b, 0x5b, 0x2d, 0x2d, 0x2d, 0x2d, 0x58], # ESC [ - - - - X
+      #   [UnknownEvent.new(String.new(Bytes[0x1b, 0x5b, 0x2d, 0x2d, 0x2d, 0x2d, 0x58]))] of Event)
+      # td << SeqTest.new(Bytes[0x20],
+      #   [KeyPressEvent.new(code: KeySpace, text: " ")] of Event)
+      # td << SeqTest.new(Bytes[0x1b, 0x20],
+      #   [KeyPressEvent.new(code: KeySpace, mod: ModAlt)] of Event)
+
+      # Additional test cases from TestParseSequence
+      # Background color
+      td << SeqTest.new("\e]11;rgb:1234/1234/1234\a".to_slice,
+        [BackgroundColorEvent.new(color: RGBA.new(0x12, 0x12, 0x12, 0xff))] of Event)
+      td << SeqTest.new("\e]11;rgb:1234/1234/1234\e\\".to_slice,
+        [BackgroundColorEvent.new(color: RGBA.new(0x12, 0x12, 0x12, 0xff))] of Event)
+      td << SeqTest.new("\e]11;rgb:1234/1234/1234\e".to_slice,
+        [UnknownEvent.new("\e]11;rgb:1234/1234/1234\e")] of Event)
+
+      # Kitty Graphics response - not yet implemented, skip
+      # td << SeqTest.new("\e_Ga=t;OK\e\\".to_slice,
+      #   [KittyGraphicsEvent.new(...)] of Event)
+
+      # Xterm modifyOtherKeys CSI 27 ; <modifier> ; <code> ~
+      td << SeqTest.new("\e[27;3;20320~".to_slice,
+        [KeyPressEvent.new(code: '你'.ord.to_u32, mod: ModAlt)] of Event)
+      td << SeqTest.new("\e[27;3;65~".to_slice,
+        [KeyPressEvent.new(code: 'A'.ord.to_u32, mod: ModAlt)] of Event)
+      td << SeqTest.new("\e[27;3;8~".to_slice,
+        [KeyPressEvent.new(code: KeyBackspace, mod: ModAlt)] of Event)
+      td << SeqTest.new("\e[27;3;27~".to_slice,
+        [KeyPressEvent.new(code: KeyEscape, mod: ModAlt)] of Event)
+      td << SeqTest.new("\e[27;3;127~".to_slice,
+        [KeyPressEvent.new(code: KeyBackspace, mod: ModAlt)] of Event)
+
+      # Xterm report window text area size.
+      td << SeqTest.new("\e[4;24;80t".to_slice,
+        [WindowOpEvent.new(op: 4, args: [24, 80])] of Event)
+
+      # Kitty keyboard / CSI u (fixterms)
+      td << SeqTest.new("\e[1B".to_slice,
+        [KeyPressEvent.new(code: KeyDown)] of Event)
+      td << SeqTest.new("\e[1;B".to_slice,
+        [KeyPressEvent.new(code: KeyDown)] of Event)
+      td << SeqTest.new("\e[1;4B".to_slice,
+        [KeyPressEvent.new(mod: ModShift | ModAlt, code: KeyDown)] of Event)
+      td << SeqTest.new("\e[1;4:1B".to_slice,
+        [KeyPressEvent.new(mod: ModShift | ModAlt, code: KeyDown)] of Event)
+      td << SeqTest.new("\e[1;4:2B".to_slice,
+        [KeyPressEvent.new(mod: ModShift | ModAlt, code: KeyDown, is_repeat: true)] of Event)
+      # td << SeqTest.new("\e[1;4:3B".to_slice,
+      #   [KeyReleaseEvent.new(mod: ModShift | ModAlt, code: KeyDown)] of Event)
+      td << SeqTest.new("\e[8~".to_slice,
+        [KeyPressEvent.new(code: KeyEnd)] of Event)
+      td << SeqTest.new("\e[8;~".to_slice,
+        [KeyPressEvent.new(code: KeyEnd)] of Event)
+      td << SeqTest.new("\e[8;10~".to_slice,
+        [KeyPressEvent.new(mod: ModShift | ModMeta, code: KeyEnd)] of Event)
+      td << SeqTest.new("\e[27;4u".to_slice,
+        [KeyPressEvent.new(mod: ModShift | ModAlt, code: KeyEscape)] of Event)
+      td << SeqTest.new("\e[127;4u".to_slice,
+        [KeyPressEvent.new(mod: ModShift | ModAlt, code: KeyBackspace)] of Event)
+      td << SeqTest.new("\e[57358;4u".to_slice,
+        [KeyPressEvent.new(mod: ModShift | ModAlt, code: KeyCapsLock)] of Event)
+      td << SeqTest.new("\e[9;2u".to_slice,
+        [KeyPressEvent.new(mod: ModShift, code: KeyTab)] of Event)
+      td << SeqTest.new("\e[195;u".to_slice,
+        [KeyPressEvent.new(text: "Ã", code: 'Ã'.ord.to_u32)] of Event)
+      td << SeqTest.new("\e[20320;2u".to_slice,
+        [KeyPressEvent.new(text: "你", mod: ModShift, code: '你'.ord.to_u32)] of Event)
+      td << SeqTest.new("\e[195;:1u".to_slice,
+        [KeyPressEvent.new(text: "Ã", code: 'Ã'.ord.to_u32)] of Event)
+      # td << SeqTest.new("\e[195;2:3u".to_slice,
+      #   [KeyReleaseEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)] of Event)
+      td << SeqTest.new("\e[195;2:2u".to_slice,
+        [KeyPressEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", is_repeat: true, mod: ModShift)] of Event)
+      td << SeqTest.new("\e[195;2:1u".to_slice,
+        [KeyPressEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)] of Event)
+      # td << SeqTest.new("\e[195;2:3u".to_slice,
+      #   [KeyReleaseEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)] of Event)
+      td << SeqTest.new("\e[97;2;65u".to_slice,
+        [KeyPressEvent.new(code: 'a'.ord.to_u32, text: "A", mod: ModShift)] of Event)
+      td << SeqTest.new("\e[97;;229u".to_slice,
+        [KeyPressEvent.new(code: 'a'.ord.to_u32, text: "å")] of Event)
+
+      # focus/blur
+      td << SeqTest.new(Bytes[0x1b, 0x5b, 0x49],
+        [FocusEvent.new] of Event)
+      td << SeqTest.new(Bytes[0x1b, 0x5b, 0x4f],
+        [BlurEvent.new] of Event)
+
+      # Mouse event.
+      td << SeqTest.new(Bytes[0x1b, 0x5b, 0x4d, 0x60, 0x41, 0x31],
+        [MouseWheelEvent.new(x: 32, y: 16, button: MouseWheelUp, mod: KeyMod::None)] of Event)
+      # SGR Mouse event.
+      td << SeqTest.new("\e[<0;33;17M".to_slice,
+        [MouseClickEvent.new(x: 32, y: 16, button: MouseLeft, mod: KeyMod::None)] of Event)
+
+      # Runes.
+      td << SeqTest.new(Bytes[0x61],
+        [KeyPressEvent.new(code: 'a'.ord.to_u32, text: "a")] of Event)
+      td << SeqTest.new(Bytes[0x1b, 0x61],
+        [KeyPressEvent.new(code: 'a'.ord.to_u32, mod: ModAlt)] of Event)
+      td << SeqTest.new(Bytes[0x61, 0x61, 0x61],
+        [KeyPressEvent.new(code: 'a'.ord.to_u32, text: "a"),
+         KeyPressEvent.new(code: 'a'.ord.to_u32, text: "a"),
+         KeyPressEvent.new(code: 'a'.ord.to_u32, text: "a")] of Event)
+
+      # Multi-byte rune.
+      td << SeqTest.new("☃".to_slice,
+        [KeyPressEvent.new(code: '☃'.ord.to_u32, text: "☃")] of Event)
+      td << SeqTest.new("\e☃".to_slice,
+        [KeyPressEvent.new(code: '☃'.ord.to_u32, mod: ModAlt)] of Event)
+
+      # Standalone control characters.
+      td << SeqTest.new(Bytes[0x1b],
+        [KeyPressEvent.new(code: KeyEscape)] of Event)
+      td << SeqTest.new(Bytes[0x01], # SOH
+        [KeyPressEvent.new(code: 'a'.ord.to_u32, mod: ModCtrl)] of Event      )
+      td << SeqTest.new(Bytes[0x1b, 0x01],
+        [KeyPressEvent.new(code: 'a'.ord.to_u32, mod: ModCtrl | ModAlt)] of Event)
+      td << SeqTest.new(Bytes[0x00], # NUL
+        [KeyPressEvent.new(code: KeySpace, mod: ModCtrl)] of Event      )
+      td << SeqTest.new(Bytes[0x1b, 0x00],
+        [KeyPressEvent.new(code: KeySpace, mod: ModCtrl | ModAlt)] of Event)
+
+      # C1 control characters.
+      td << SeqTest.new(Bytes[0x80],
+        [KeyPressEvent.new(code: (0x80 - '@'.ord).to_u32, mod: ModCtrl | ModAlt)] of Event)
+
+      {% unless flag?(:windows) %}
+        td << SeqTest.new(Bytes[0xfe],
+          [UnknownEvent.new(String.new(Bytes[0xfe]))] of Event)
+      {% end %}
+
+      parser = Parser.new
+      td.each do |test_case|
+        events = [] of Event
+        buf = test_case.seq
+        while buf.size > 0
+          n, got = parser.parse_sequence(buf)
+          got.should_not be_nil
+          event = got.not_nil! # ameba:disable Lint/NotNil
+          case event
+          when MultiEvent
+            events.concat(event.events)
+          else
+            events << event
+          end
+          buf = buf + n
+        end
+        events.should eq test_case.events
       end
     end
   end
