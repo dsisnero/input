@@ -7,7 +7,7 @@ libraries exist as submodules in ./vendor so the code we are porting is at
 
 ## Source of Truth
 
-* **Go libraries and tests are the authoritative source** - The `huh`submodule
+* **Go libraries and tests are the authoritative source** - The `input`submodule
   contain the reference implementation
 * **Golden files must match Go output** - Test fixtures in submodule `testdata/`
   directories are canonical; our implementation must produce identical output

@@ -11,6 +11,10 @@ license: MIT
 dependencies:
   ansi:
     github: dsisnero/ansi
+  cancel_reader:
+    github: dsisnero/cancel_reader
+  terminfo:
+    github: docelic/terminfo
 
 development_dependencies:
   ameba:
