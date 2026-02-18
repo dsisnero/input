@@ -51,6 +51,13 @@ make clean      # Clean temporary files
 This is an ongoing port from Go to Crystal. The source code is available in the
 `vendor/` submodule.
 
+## Recent Updates
+
+- Added GitHub Actions CI for Linux and Windows specs.
+- Ported Windows console input parity paths (`cancelreader`, `ReadEvents` console flow, key/mouse/focus/window event parsing).
+- Completed Go `TestParseSequence` matrix parity in Crystal specs.
+- Added Crystal equivalents for Go fuzz/benchmark-style parser safety coverage.
+
 ## Contributing
 
 1. Fork it (<https://github.com/dsisnero/input/fork>)
