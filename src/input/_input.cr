@@ -111,6 +111,21 @@ module Input
     def_hash
   end
 
+  # PasteEvent is an message that is emitted when a terminal receives pasted text
+  # using bracketed-paste.
+  class PasteEvent < Event
+    getter value : String
+
+    def initialize(@value : String)
+    end
+
+    def ==(other : self) : Bool
+      @value == other.value
+    end
+
+    def_hash @value
+  end
+
   # CursorPositionEvent reports the cursor position.
   class CursorPositionEvent < Event
     getter x : Int32
@@ -167,5 +182,48 @@ module Input
     end
 
     def_hash @flags
+  end
+
+  # KittyGraphicsEvent represents a Kitty Graphics protocol response event.
+  class KittyGraphicsEvent < Event
+    getter options : Ansi::Kitty::Options
+    getter payload : String
+
+    def initialize(@options : Ansi::Kitty::Options, @payload : String)
+    end
+
+    def ==(other : self) : Bool
+      @options == other.options && @payload == other.payload
+    end
+
+    def_hash @options, @payload
+  end
+
+  # TerminalVersionEvent is a message that represents the terminal version.
+  class TerminalVersionEvent < Event
+    getter value : String
+
+    def initialize(@value : String)
+    end
+
+    def ==(other : self) : Bool
+      @value == other.value
+    end
+
+    def_hash @value
+  end
+
+  # CapabilityEvent represents a Termcap/Terminfo response event.
+  class CapabilityEvent < Event
+    getter value : String
+
+    def initialize(@value : String)
+    end
+
+    def ==(other : self) : Bool
+      @value == other.value
+    end
+
+    def_hash @value
   end
 end

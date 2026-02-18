@@ -16,13 +16,11 @@ module Input
     def_hash @params
   end
 
-  private def self.parse_primary_dev_attrs(params : Ansi::Params) : Event
+  def self.parse_primary_dev_attrs(params : Ansi::Params) : Event
     # Primary Device Attributes
     da1 = Array(Int32).new(params.size)
-    params.each do |param|
-      unless param.has_more?
-        da1 << param.param(0)
-      end
+    params.for_each(0) do |_, value, has_more|
+      da1 << value unless has_more
     end
     PrimaryDeviceAttributesEvent.new(da1)
   end

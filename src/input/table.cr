@@ -398,9 +398,31 @@ module Input
   end
 
   def self.build_terminfo_keys(flags : Int32, term : String) : Hash(String, Key)
-    # Since we don't have a terminfo library, just return empty hash.
-    # This matches Go behavior when terminfo.Load fails.
-    Hash(String, Key).new
+    table = Hash(String, Key).new
+    ti = load_terminfo(term)
+    return table if ti.nil?
+
+    ti_table = default_terminfo_keys(flags)
+
+    # Default keys
+    ti.not_nil!.string_caps_short.each do |name, seq|
+      next unless name.starts_with?("k")
+      next if seq.empty?
+      if k = ti_table[name]?
+        table[seq] = k
+      end
+    end
+
+    # Extended keys
+    ti.not_nil!.ext_string_caps_short.each do |name, seq|
+      next unless name.starts_with?("k")
+      next if seq.empty?
+      if k = ti_table[name]?
+        table[seq] = k
+      end
+    end
+
+    table
   end
 
   def self.default_terminfo_keys(flags : Int32) : Hash(String, Key)

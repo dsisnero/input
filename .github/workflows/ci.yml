@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  spec-linux:
+    runs-on: ubuntu-latest
+    env:
+      CRYSTAL_CACHE_DIR: ${{ github.workspace }}/.crystal-cache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: crystal-lang/install-crystal@v1
+      - name: Install shards
+        run: shards install
+      - name: Run specs (Linux)
+        run: crystal spec spec/input
+
+  spec-windows:
+    runs-on: windows-latest
+    env:
+      CRYSTAL_CACHE_DIR: ${{ github.workspace }}/.crystal-cache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: crystal-lang/install-crystal@v1
+      - name: Install shards
+        run: shards install
+      - name: Run specs (Windows)
+        run: crystal spec spec/input

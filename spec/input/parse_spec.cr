@@ -2,6 +2,8 @@ require "../spec_helper"
 
 module Input
   record SeqTest, seq : Bytes, events : Array(Event)
+  F3_CUR_POS_REGEXP = /\e\[1;(\d+)R/
+  SEQUENCES         = Input.build_keys_table(FlagTerminfo, "dumb")
   describe Parser do
     it "parses alt+shift+tab and printable letters" do
       input = Bytes[
@@ -68,28 +70,58 @@ module Input
       end
     end
 
-    pending "parses all sequences" do
+    it "parses kitty keyboard CSI u variants" do
+      parser = Parser.new
+
+      n, got = parser.parse_sequence("\e[195;u".to_slice)
+      n.should be > 0
+      got.should eq KeyPressEvent.new(text: "Ã", code: 'Ã'.ord.to_u32)
+
+      n, got = parser.parse_sequence("\e[195;2:2u".to_slice)
+      n.should be > 0
+      got.should eq KeyPressEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", is_repeat: true, mod: ModShift)
+
+      n, got = parser.parse_sequence("\e[195;2:3u".to_slice)
+      n.should be > 0
+      got.should eq KeyReleaseEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)
+
+      n, got = parser.parse_sequence("\e[97;2;65u".to_slice)
+      n.should be > 0
+      got.should eq KeyPressEvent.new(code: 'a'.ord.to_u32, text: "A", mod: ModShift)
+    end
+
+    it "parses xterm modifyOtherKeys sequences" do
+      parser = Parser.new
+
+      n, got = parser.parse_sequence("\e[27;3;65~".to_slice)
+      n.should be > 0
+      got.should eq KeyPressEvent.new(code: 'A'.ord.to_u32, mod: ModAlt)
+
+      n, got = parser.parse_sequence("\e[27;3;27~".to_slice)
+      n.should be > 0
+      got.should eq KeyPressEvent.new(code: KeyEscape, mod: ModAlt)
+    end
+
+    it "parses all sequences" do
       # Port of Go's TestParseSequence
-      # f3_cur_pos_regexp = /\e\[1;(\d+)R/
-      # sequences = Input.build_keys_table(FlagTerminfo, "dumb")
 
       td = [] of SeqTest
-      # sequences.each do |seq, key|
-      #   k = KeyPressEvent.new(key)
-      #   st = SeqTest.new(seq.to_slice, [k] of Event)
-      #   if f3_cur_pos_regexp.match(seq)
-      #     st = SeqTest.new(seq.to_slice, [k, CursorPositionEvent.new(x: key.mod.value.to_i, y: 0)] of Event)
-      #   end
-      #   td << st
-      # end
+      SEQUENCES.each do |seq, key|
+        k = KeyPressEvent.new(key)
+        st = SeqTest.new(seq.to_slice, [k] of Event)
+        if F3_CUR_POS_REGEXP.match(seq)
+          st = SeqTest.new(seq.to_slice, [k, CursorPositionEvent.new(x: key.mod.value.to_i, y: 0)] of Event)
+        end
+        td << st
+      end
 
       # Additional special cases.
-      # td << SeqTest.new(Bytes[0x1b, 0x5b, 0x2d, 0x2d, 0x2d, 0x2d, 0x58], # ESC [ - - - - X
-      #   [UnknownEvent.new(String.new(Bytes[0x1b, 0x5b, 0x2d, 0x2d, 0x2d, 0x2d, 0x58]))] of Event)
-      # td << SeqTest.new(Bytes[0x20],
-      #   [KeyPressEvent.new(code: KeySpace, text: " ")] of Event)
-      # td << SeqTest.new(Bytes[0x1b, 0x20],
-      #   [KeyPressEvent.new(code: KeySpace, mod: ModAlt)] of Event)
+      td << SeqTest.new(Bytes[0x1b, 0x5b, 0x2d, 0x2d, 0x2d, 0x2d, 0x58], # ESC [ - - - - X
+        [UnknownEvent.new(String.new(Bytes[0x1b, 0x5b, 0x2d, 0x2d, 0x2d, 0x2d, 0x58]))] of Event      )
+      td << SeqTest.new(Bytes[0x20],
+        [KeyPressEvent.new(code: KeySpace, text: " ")] of Event)
+      td << SeqTest.new(Bytes[0x1b, 0x20],
+        [KeyPressEvent.new(code: KeySpace, mod: ModAlt)] of Event)
 
       # Additional test cases from TestParseSequence
       # Background color
@@ -100,9 +132,21 @@ module Input
       td << SeqTest.new("\e]11;rgb:1234/1234/1234\e".to_slice,
         [UnknownEvent.new("\e]11;rgb:1234/1234/1234\e")] of Event)
 
-      # Kitty Graphics response - not yet implemented, skip
-      # td << SeqTest.new("\e_Ga=t;OK\e\\".to_slice,
-      #   [KittyGraphicsEvent.new(...)] of Event)
+      # Kitty Graphics response.
+      kgo1 = Ansi::Kitty::Options.new
+      kgo1.action = Ansi::Kitty::Transmit.to_u8
+      td << SeqTest.new("\e_Ga=t;OK\e\\".to_slice,
+        [KittyGraphicsEvent.new(options: kgo1, payload: "OK")] of Event)
+      kgo2 = Ansi::Kitty::Options.new
+      kgo2.id = 99
+      kgo2.number = 13
+      td << SeqTest.new("\e_Gi=99,I=13;OK\e\\".to_slice,
+        [KittyGraphicsEvent.new(options: kgo2, payload: "OK")] of Event)
+      kgo3 = Ansi::Kitty::Options.new
+      kgo3.id = 1337
+      kgo3.quite = 1_u8
+      td << SeqTest.new("\e_Gi=1337,q=1;EINVAL:your face\e\\".to_slice,
+        [KittyGraphicsEvent.new(options: kgo3, payload: "EINVAL:your face")] of Event)
 
       # Xterm modifyOtherKeys CSI 27 ; <modifier> ; <code> ~
       td << SeqTest.new("\e[27;3;20320~".to_slice,
@@ -131,8 +175,8 @@ module Input
         [KeyPressEvent.new(mod: ModShift | ModAlt, code: KeyDown)] of Event)
       td << SeqTest.new("\e[1;4:2B".to_slice,
         [KeyPressEvent.new(mod: ModShift | ModAlt, code: KeyDown, is_repeat: true)] of Event)
-      # td << SeqTest.new("\e[1;4:3B".to_slice,
-      #   [KeyReleaseEvent.new(mod: ModShift | ModAlt, code: KeyDown)] of Event)
+      td << SeqTest.new("\e[1;4:3B".to_slice,
+        [KeyReleaseEvent.new(mod: ModShift | ModAlt, code: KeyDown)] of Event)
       td << SeqTest.new("\e[8~".to_slice,
         [KeyPressEvent.new(code: KeyEnd)] of Event)
       td << SeqTest.new("\e[8;~".to_slice,
@@ -153,14 +197,14 @@ module Input
         [KeyPressEvent.new(text: "你", mod: ModShift, code: '你'.ord.to_u32)] of Event)
       td << SeqTest.new("\e[195;:1u".to_slice,
         [KeyPressEvent.new(text: "Ã", code: 'Ã'.ord.to_u32)] of Event)
-      # td << SeqTest.new("\e[195;2:3u".to_slice,
-      #   [KeyReleaseEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)] of Event)
+      td << SeqTest.new("\e[195;2:3u".to_slice,
+        [KeyReleaseEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)] of Event)
       td << SeqTest.new("\e[195;2:2u".to_slice,
         [KeyPressEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", is_repeat: true, mod: ModShift)] of Event)
       td << SeqTest.new("\e[195;2:1u".to_slice,
         [KeyPressEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)] of Event)
-      # td << SeqTest.new("\e[195;2:3u".to_slice,
-      #   [KeyReleaseEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)] of Event)
+      td << SeqTest.new("\e[195;2:3u".to_slice,
+        [KeyReleaseEvent.new(code: 'Ã'.ord.to_u32, text: "Ã", mod: ModShift)] of Event)
       td << SeqTest.new("\e[97;2;65u".to_slice,
         [KeyPressEvent.new(code: 'a'.ord.to_u32, text: "A", mod: ModShift)] of Event)
       td << SeqTest.new("\e[97;;229u".to_slice,
@@ -213,7 +257,7 @@ module Input
 
       {% unless flag?(:windows) %}
         td << SeqTest.new(Bytes[0xfe],
-          [UnknownEvent.new(String.new(Bytes[0xfe]))] of Event)
+          [UnknownEvent.new(0xfe_u8.chr.to_s)] of Event)
       {% end %}
 
       parser = Parser.new
@@ -232,7 +276,9 @@ module Input
           end
           buf = buf + n
         end
-        events.should eq test_case.events
+        if events != test_case.events
+          fail "sequence #{String.new(test_case.seq).inspect} expected #{test_case.events.inspect}, got #{events.inspect}"
+        end
       end
     end
   end

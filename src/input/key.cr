@@ -358,7 +358,7 @@ module Input
   end
 
   # KeyReleaseEvent represents a key release event.
-  struct KeyReleaseEvent
+  class KeyReleaseEvent < Event
     include KeyEvent
 
     getter key : Key
@@ -376,6 +376,10 @@ module Input
 
     def keystroke : String
       @key.keystroke
+    end
+
+    def ==(other : self) : Bool
+      @key == other.key
     end
 
     def_hash @key
