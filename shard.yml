@@ -1,5 +1,5 @@
 name: input
-version: 0.1.0
+version: 0.1.1
 
 authors:
   - Dominic Sisneros <dsisnero@gmail.com>
@@ -14,7 +14,8 @@ dependencies:
   cancel_reader:
     github: dsisnero/cancel_reader
   terminfo:
-    github: docelic/terminfo
+    github: dsisnero/terminfo
+    version: 0.8.2
 
 development_dependencies:
   ameba:
